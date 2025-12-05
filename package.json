@@ -1,0 +1,33 @@
+{
+  "name": "ra-bot",
+  "version": "1.0.0",
+  "description": "Resident Advisor ticket monitoring bot",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "watch": "tsx src/index.ts --watch",
+    "build": "tsc",
+    "login": "tsx src/login.ts"
+  },
+  "keywords": [
+    "ra",
+    "resident-advisor",
+    "tickets"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@types/node": "^24.10.1",
+    "@types/node-notifier": "^8.0.5",
+    "node-notifier": "^10.0.1",
+    "playwright": "^1.57.0",
+    "playwright-extra": "^4.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+    "canvas": "^3.2.0"
+  }
+}

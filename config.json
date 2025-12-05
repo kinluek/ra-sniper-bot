@@ -1,0 +1,21 @@
+{
+  "tickets": {
+    "eventUrl": "https://ra.co/events/2300927",
+    "targetTicketType": "Final release",
+    "quantity": 1,
+    "autoPurchase": false
+  },
+  "polling": {
+    "intervalMs": 30000,
+    "retryDelayMs": 5000
+  },
+  "notifications": {
+    "desktop": true,
+    "sound": true,
+    "openBrowserOnAvailable": true
+  },
+  "browser": {
+    "headless": false,
+    "userDataDir": "/Users/SChan2/dev/ra-bot/browser-data"
+  }
+}

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Generate Extension Icons</title>
+</head>
+<body>
+  <h1>RA Ticket Watcher Icons</h1>
+  <p>Right-click each image and save to the icons/ folder</p>
+
+  <h2>icon16.png</h2>
+  <canvas id="icon16" width="16" height="16"></canvas>
+
+  <h2>icon48.png</h2>
+  <canvas id="icon48" width="48" height="48"></canvas>
+
+  <h2>icon128.png</h2>
+  <canvas id="icon128" width="128" height="128"></canvas>
+
+  <script>
+    function drawIcon(canvas) {
+      const ctx = canvas.getContext('2d');
+      const size = canvas.width;
+
+      // Background
+      ctx.fillStyle = '#1a1a2e';
+      ctx.beginPath();
+      ctx.roundRect(0, 0, size, size, size * 0.15);
+      ctx.fill();
+
+      // Ticket shape
+      ctx.fillStyle = '#3498db';
+      const margin = size * 0.15;
+      const ticketWidth = size - margin * 2;
+      const ticketHeight = size * 0.5;
+      const ticketY = (size - ticketHeight) / 2;
+
+      ctx.beginPath();
+      ctx.roundRect(margin, ticketY, ticketWidth, ticketHeight, size * 0.08);
+      ctx.fill();
+
+      // Notches
+      ctx.fillStyle = '#1a1a2e';
+      const notchRadius = size * 0.06;
+      ctx.beginPath();
+      ctx.arc(margin, size / 2, notchRadius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(size - margin, size / 2, notchRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Dashed line
+      ctx.strokeStyle = '#1a1a2e';
+      ctx.lineWidth = size * 0.02;
+      ctx.setLineDash([size * 0.04, size * 0.04]);
+      ctx.beginPath();
+      ctx.moveTo(size * 0.35, ticketY + size * 0.1);
+      ctx.lineTo(size * 0.35, ticketY + ticketHeight - size * 0.1);
+      ctx.stroke();
+    }
+
+    drawIcon(document.getElementById('icon16'));
+    drawIcon(document.getElementById('icon48'));
+    drawIcon(document.getElementById('icon128'));
+  </script>
+</body>
+</html>

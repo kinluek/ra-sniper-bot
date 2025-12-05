@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RA Ticket Watcher</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Berlin Ticket Shark</h1>
+      <div id="status" class="status idle">
+        <span class="status-dot"></span>
+        <span class="status-text">Idle</span>
+      </div>
+    </header>
+
+    <section class="settings">
+      <div class="form-group">
+        <label for="targetTicket">Target Ticket Type</label>
+        <input type="text" id="targetTicket" placeholder="e.g., Final release">
+      </div>
+
+      <div class="form-group">
+        <label for="refreshInterval">Refresh Interval: <span id="intervalValue">30</span>s</label>
+        <input type="range" id="refreshInterval" min="5" max="120" value="30">
+      </div>
+
+      <div class="form-group toggle-group">
+        <label for="autoBuy">Auto-click Buy Button</label>
+        <label class="toggle">
+          <input type="checkbox" id="autoBuy">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="form-group toggle-group">
+        <label for="soundEnabled">Sound Alert</label>
+        <label class="toggle">
+          <input type="checkbox" id="soundEnabled" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+    </section>
+
+    <section class="telegram-settings">
+      <h2>Telegram Notifications</h2>
+      <div class="form-group">
+        <label for="telegramToken">Bot Token</label>
+        <input type="text" id="telegramToken" placeholder="123456:ABC-DEF...">
+      </div>
+      <div class="form-group">
+        <label for="telegramChatIds">Chat IDs <small>(one per line or comma-separated)</small></label>
+        <textarea id="telegramChatIds" rows="3" placeholder="123456789&#10;987654321"></textarea>
+      </div>
+      <button id="testTelegram" class="btn-secondary">Test Telegram</button>
+    </section>
+
+    <section class="actions">
+      <button id="startBtn" class="btn-primary">Start Monitoring</button>
+      <button id="stopBtn" class="btn-danger" disabled>Stop</button>
+    </section>
+
+    <footer>
+      <p id="lastCheck">Last check: Never</p>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
