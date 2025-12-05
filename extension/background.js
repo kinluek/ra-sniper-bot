@@ -61,6 +61,44 @@ async function sendTelegramNotification(ticket, price, url) {
   }
 }
 
+// Send Telegram notification for auto-pay
+async function sendAutoPayNotification(url) {
+  const settings = await chrome.storage.sync.get(['telegramToken', 'telegramChatIds']);
+  const { telegramToken, telegramChatIds } = settings;
+
+  const chatIds = parseChatIds(telegramChatIds);
+
+  if (!telegramToken || chatIds.length === 0) {
+    return;
+  }
+
+  const message = `
+💳 <b>AUTO-PAY TRIGGERED!</b>
+
+The "Pay now" button was clicked automatically.
+
+<a href="${url}">🔗 View Payment Page</a>
+
+Check your email for confirmation!
+  `.trim();
+
+  for (const chatId of chatIds) {
+    try {
+      await fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: message,
+          parse_mode: 'HTML'
+        })
+      });
+    } catch (error) {
+      console.error(`[Berlin Ticket Shark BG] Auto-pay notification error:`, error);
+    }
+  }
+}
+
 // Show Chrome notification
 async function showNotification(ticket, price) {
   try {
@@ -126,6 +164,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'STOP_MONITORING') {
     console.log('[Berlin Ticket Shark BG] Monitoring stopped');
     chrome.storage.sync.set({ isMonitoring: false });
+  }
+
+  if (message.type === 'AUTO_PAY_CLICKED') {
+    console.log('[Berlin Ticket Shark BG] 💳 Auto-pay clicked!');
+
+    // Send Telegram notification about auto-pay
+    sendAutoPayNotification(message.url);
+
+    // Show Chrome notification
+    chrome.notifications.create('ra-auto-pay', {
+      type: 'basic',
+      iconUrl: 'icons/icon128.png',
+      title: '💳 Auto-Pay Triggered!',
+      message: 'Pay now button was clicked automatically',
+      priority: 2
+    });
   }
 
   sendResponse({ received: true });

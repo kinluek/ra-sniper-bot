@@ -28,6 +28,11 @@
       "js": ["content.js"],
       "run_at": "document_idle",
       "all_frames": true
+    },
+    {
+      "matches": ["https://ra.co/shop/*"],
+      "js": ["payment.js"],
+      "run_at": "document_idle"
     }
   ],
   "background": {
