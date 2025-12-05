@@ -1,4 +1,4 @@
-// RA Ticket Watcher - Content Script
+// Berlin Ticket Shark - Content Script
 // Runs on ra.co/events/* pages
 
 let isMonitoring = false;
