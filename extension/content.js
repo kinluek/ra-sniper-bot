@@ -348,6 +348,10 @@ async function startMonitoring() {
   console.log('[Berlin Ticket Shark] Starting monitoring for:', settings.targetTicket);
   console.log('[Berlin Ticket Shark] Refresh interval:', settings.refreshInterval, 'seconds');
 
+  // Store current URL for restart functionality
+  await chrome.storage.sync.set({ lastMonitoredUrl: window.location.href });
+  console.log('[Berlin Ticket Shark] Stored URL for restart:', window.location.href);
+
   isMonitoring = true;
   updateIndicator('Starting...', '#3498db');
 

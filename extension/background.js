@@ -2,6 +2,10 @@
 
 console.log('[Berlin Ticket Shark BG] Service worker started');
 
+// ===== TELEGRAM POLLING FOR RESTART COMMANDS =====
+const TELEGRAM_POLL_ALARM_NAME = 'telegram-poll';
+const TELEGRAM_POLL_INTERVAL_MINUTES = 0.5; // Poll every 30 seconds (0.5 minutes)
+
 // Parse chat IDs from stored string (comma or newline separated)
 function parseChatIds(text) {
   if (!text) return [];
@@ -9,6 +13,161 @@ function parseChatIds(text) {
     .split(/[,\n]+/)
     .map(id => id.trim())
     .filter(id => id.length > 0);
+}
+
+// Poll Telegram for new messages (looking for "restart" command)
+async function pollTelegramForRestart() {
+  console.log('[Berlin Ticket Shark BG] 🔍 Polling Telegram for restart command...');
+
+  const settings = await chrome.storage.sync.get(['telegramToken', 'telegramChatIds', 'telegramLastUpdateId', 'lastMonitoredUrl', 'telegramPollingActive']);
+  const { telegramToken, telegramChatIds, telegramLastUpdateId, lastMonitoredUrl, telegramPollingActive } = settings;
+
+  if (!telegramPollingActive) {
+    console.log('[Berlin Ticket Shark BG] Polling not active, stopping alarm');
+    await chrome.alarms.clear(TELEGRAM_POLL_ALARM_NAME);
+    return;
+  }
+
+  const chatIds = parseChatIds(telegramChatIds);
+  console.log('[Berlin Ticket Shark BG] Authorized chat IDs:', chatIds);
+
+  if (!telegramToken || chatIds.length === 0) {
+    console.log('[Berlin Ticket Shark BG] Telegram not configured for polling');
+    return;
+  }
+
+  try {
+    // Get updates from Telegram (only new ones after lastUpdateId)
+    const offset = telegramLastUpdateId ? telegramLastUpdateId + 1 : undefined;
+    const url = `https://api.telegram.org/bot${telegramToken}/getUpdates?timeout=5${offset ? `&offset=${offset}` : ''}`;
+
+    console.log('[Berlin Ticket Shark BG] Fetching updates, offset:', offset || 'none');
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (!data.ok) {
+      console.error('[Berlin Ticket Shark BG] Telegram getUpdates error:', data.description);
+      return;
+    }
+
+    const updates = data.result || [];
+    console.log(`[Berlin Ticket Shark BG] Got ${updates.length} update(s) from Telegram`);
+
+    for (const update of updates) {
+      // Store the latest update_id to avoid processing duplicates
+      await chrome.storage.sync.set({ telegramLastUpdateId: update.update_id });
+
+      const message = update.message;
+      if (!message || !message.text) continue;
+
+      const chatId = String(message.chat.id);
+      const text = message.text.toLowerCase().trim();
+
+      console.log(`[Berlin Ticket Shark BG] Message from chat ${chatId}: "${text}"`);
+      console.log(`[Berlin Ticket Shark BG] Checking if ${chatId} is in authorized list: ${chatIds.join(', ')}`);
+
+      // Check if message is from an authorized chat and contains "restart"
+      if (chatIds.includes(chatId) && text === 'restart') {
+        console.log('[Berlin Ticket Shark BG] 🔄 RESTART command received!');
+
+        // Stop polling
+        await chrome.storage.sync.set({ telegramPollingActive: false });
+        await chrome.alarms.clear(TELEGRAM_POLL_ALARM_NAME);
+
+        // Send confirmation to Telegram
+        await sendTelegramReply(chatId, '🔄 Restarting monitoring...\n\nNavigating back to the event page.');
+
+        // Restart the monitoring
+        await restartMonitoring(lastMonitoredUrl);
+        return;
+      }
+    }
+  } catch (error) {
+    console.error('[Berlin Ticket Shark BG] Telegram polling error:', error);
+  }
+}
+
+// Send a reply message to a specific Telegram chat
+async function sendTelegramReply(chatId, text) {
+  const settings = await chrome.storage.sync.get(['telegramToken']);
+  const { telegramToken } = settings;
+
+  if (!telegramToken) return;
+
+  try {
+    await fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: text,
+        parse_mode: 'HTML'
+      })
+    });
+    console.log(`[Berlin Ticket Shark BG] Reply sent to ${chatId}`);
+  } catch (error) {
+    console.error('[Berlin Ticket Shark BG] Error sending reply:', error);
+  }
+}
+
+// Start polling for Telegram restart commands using chrome.alarms
+async function startTelegramPolling() {
+  const settings = await chrome.storage.sync.get(['telegramPollingActive']);
+
+  if (settings.telegramPollingActive) {
+    console.log('[Berlin Ticket Shark BG] Telegram polling already active');
+    return;
+  }
+
+  console.log('[Berlin Ticket Shark BG] 👂 Starting Telegram polling for restart commands...');
+
+  // Store polling state in storage (survives service worker sleep)
+  await chrome.storage.sync.set({ telegramPollingActive: true });
+
+  // Create a repeating alarm that wakes up the service worker
+  await chrome.alarms.create(TELEGRAM_POLL_ALARM_NAME, {
+    delayInMinutes: 0.1, // First poll in 6 seconds
+    periodInMinutes: TELEGRAM_POLL_INTERVAL_MINUTES // Then every 30 seconds
+  });
+
+  console.log('[Berlin Ticket Shark BG] Alarm created for Telegram polling');
+
+  // Also do an immediate poll
+  pollTelegramForRestart();
+}
+
+// Stop polling for Telegram restart commands
+async function stopTelegramPolling() {
+  console.log('[Berlin Ticket Shark BG] Stopping Telegram polling');
+  await chrome.storage.sync.set({ telegramPollingActive: false });
+  await chrome.alarms.clear(TELEGRAM_POLL_ALARM_NAME);
+}
+
+// Restart monitoring by navigating to the event page and starting monitoring
+async function restartMonitoring(url) {
+  if (!url) {
+    console.error('[Berlin Ticket Shark BG] No URL stored for restart');
+    return;
+  }
+
+  console.log('[Berlin Ticket Shark BG] Restarting monitoring at:', url);
+
+  // Set monitoring state
+  await chrome.storage.sync.set({ isMonitoring: true });
+
+  // Find existing tab with the RA event or create new one
+  const tabs = await chrome.tabs.query({ url: 'https://ra.co/events/*' });
+
+  if (tabs.length > 0) {
+    // Use existing tab - reload it
+    const tab = tabs[0];
+    await chrome.tabs.update(tab.id, { url: url, active: true });
+    console.log('[Berlin Ticket Shark BG] Reloading existing RA tab');
+  } else {
+    // Create new tab
+    await chrome.tabs.create({ url: url, active: true });
+    console.log('[Berlin Ticket Shark BG] Created new tab for RA event');
+  }
 }
 
 // Send Telegram notification to all configured chat IDs
@@ -32,6 +191,8 @@ async function sendTelegramNotification(ticket, price, url) {
 <a href="${url}">🔗 Open Event Page</a>
 
 ⚡ Go grab it now!
+
+💬 Reply <b>restart</b> to start monitoring again
   `.trim();
 
   console.log(`[Berlin Ticket Shark BG] Sending Telegram to ${chatIds.length} chat(s)...`);
@@ -80,6 +241,8 @@ The "Pay now" button was clicked automatically.
 <a href="${url}">🔗 View Payment Page</a>
 
 Check your email for confirmation!
+
+💬 Reply <b>restart</b> to buy another ticket
   `.trim();
 
   for (const chatId of chatIds) {
@@ -137,7 +300,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     showNotification(message.ticket, message.price);
     sendTelegramNotification(message.ticket, message.price, message.url);
 
-    // Update storage
+    // Update storage (keep lastMonitoredUrl for restart)
     chrome.storage.sync.set({
       isMonitoring: false,
       lastFoundTicket: {
@@ -147,6 +310,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         timestamp: Date.now()
       }
     });
+
+    // Start listening for "restart" command via Telegram
+    startTelegramPolling();
   }
 
   if (message.type === 'STATUS_UPDATE') {
@@ -159,6 +325,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'START_MONITORING') {
     console.log('[Berlin Ticket Shark BG] Monitoring started');
     chrome.storage.sync.set({ isMonitoring: true });
+    // Stop polling since we're actively monitoring now
+    stopTelegramPolling();
   }
 
   if (message.type === 'STOP_MONITORING') {
@@ -180,6 +348,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       message: 'Pay now button was clicked automatically',
       priority: 2
     });
+
+    // Start listening for "restart" command via Telegram
+    startTelegramPolling();
   }
 
   sendResponse({ received: true });
@@ -210,7 +381,10 @@ chrome.runtime.onInstalled.addListener((details) => {
       soundEnabled: true,
       telegramToken: '',
       telegramChatIds: '',
-      isMonitoring: false
+      isMonitoring: false,
+      lastMonitoredUrl: '',
+      telegramLastUpdateId: 0,
+      telegramPollingActive: false
     };
 
     // Only set defaults for missing keys
@@ -225,4 +399,29 @@ chrome.runtime.onInstalled.addListener((details) => {
       chrome.storage.sync.set(toSet);
     }
   });
+});
+
+// Handle alarms (for Telegram polling)
+chrome.alarms.onAlarm.addListener((alarm) => {
+  console.log('[Berlin Ticket Shark BG] ⏰ Alarm triggered:', alarm.name);
+
+  if (alarm.name === TELEGRAM_POLL_ALARM_NAME) {
+    pollTelegramForRestart();
+  }
+});
+
+// Check if polling should be active on service worker startup (in case it was sleeping)
+chrome.storage.sync.get(['telegramPollingActive']).then(({ telegramPollingActive }) => {
+  if (telegramPollingActive) {
+    console.log('[Berlin Ticket Shark BG] Service worker woke up, polling was active - checking alarm');
+    chrome.alarms.get(TELEGRAM_POLL_ALARM_NAME).then((alarm) => {
+      if (!alarm) {
+        console.log('[Berlin Ticket Shark BG] Alarm was missing, recreating...');
+        chrome.alarms.create(TELEGRAM_POLL_ALARM_NAME, {
+          delayInMinutes: 0.1,
+          periodInMinutes: TELEGRAM_POLL_INTERVAL_MINUTES
+        });
+      }
+    });
+  }
 });
