@@ -3,28 +3,3 @@ botToken: 8579975396:AAHJqAOUMiRKbyQSMRg8kxIbzpCPrfQSTqc
 chatID: 1681059995
 
 https://api.telegram.org/bot8579975396:AAHJqAOUMiRKbyQSMRg8kxIbzpCPrfQSTqc/getUpdates
-
-<ul data-ticket-info-selector-id="tickets-info">
-
-    <li class="closed" data-info="Ticket sales have ended" data-date="" data-minutes-offset="60" data-is-deposit-ticket="0">
-        <div class="upcoming-ticket">
-            <div class="type-title">1st release (incl shuttle ticket &amp; RA service fee)</div>
-            <div class="type-price">26,75 €</div>
-        </div>
-    </li>
-
-    <li class="closed" data-info="Ticket sales have ended" data-date="" data-minutes-offset="60" data-is-deposit-ticket="0">
-        <div class="upcoming-ticket">
-            <div class="type-title">Final release (incl shuttle ticket &amp; RA service fee)</div>
-            <div class="type-price">37,45 €</div>
-        </div>
-    </li>
-
-    <li class="onsale but" data-info="Sales close" data-date="2026/01/02 13:00:00" data-minutes-offset="60" data-zeropriced="0" data-max-tickets-available="6" data-parent-max-tickets="6" data-price="32.1000">
-        <input type="radio" id="tickettype1185512" data-eventid="2300927" name="tickettypes" value="1185512" data-shiptype="[{&quot;id&quot;:1187374,&quot;sid&quot;:8}]">
-        <label for="tickettype1185512">
-            <div class="pr8">Entry after midnight (incl shuttle ticket &amp; RA service fee)</div>
-            <div class="type-price">32,10 €</div>
-        </label>
-    </li>
-                                </ul>
